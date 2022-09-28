@@ -1,40 +1,7 @@
 package libs
 
-// #include <stdint.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include "sass/context.h"
-//
-// extern struct Sass_Import** ImporterBridge(const char* url, const char* prev, uintptr_t idx);
-//
-// Sass_Import_List SassImporterPathsHandler(const char* cur_path, Sass_Importer_Entry cb, struct Sass_Compiler* comp)
-// {
-//   void* cookie = sass_importer_get_cookie(cb);
-//   struct Sass_Import* previous = sass_compiler_get_last_import(comp);
-//   const char* prev_path = sass_import_get_imp_path(previous);
-//   uintptr_t idx = (uintptr_t)cookie;
-//   Sass_Import_List list = ImporterBridge(cur_path, prev_path, idx);
-//   return list;
-// }
-//
-// Sass_Import_List SassImporterAbsHandler(const char* cur_path, Sass_Importer_Entry cb, struct Sass_Compiler* comp)
-// {
-//   void* cookie = sass_importer_get_cookie(cb);
-//   struct Sass_Import* previous = sass_compiler_get_last_import(comp);
-//   const char* prev_abs_path = sass_import_get_abs_path(previous);
-//   uintptr_t idx = (uintptr_t)cookie;
-//   Sass_Import_List list = ImporterBridge(cur_path, prev_abs_path, idx);
-//   return list;
-// }
-//
-//
-// #ifndef UINTMAX_MAX
-// #  ifdef __UINTMAX_MAX__
-// #    define UINTMAX_MAX __UINTMAX_MAX__
-// #  endif
-// #endif
-//
-// //size_t max_size = UINTMAX_MAX;
+// #include "./resolutioncache/resolutioncache.c"
+// #include "./resolutioncache/importerhandler.c"
 import "C"
 import "unsafe"
 
@@ -43,6 +10,15 @@ var globalImports SafeMap
 // ImportResolver can be used as a custom import resolver. Return an empty body to
 // signal loading the import body from the URL.
 type ImportResolver func(url string, prev string) (newURL string, body string, resolved bool)
+
+// Structured version of ImportResolver that can be used for C-side caching, etc
+type AdvancedImportResolver func(url string, prev string) AdvancedImportResolverResult
+type AdvancedImportResolverResult struct {
+	NewUrl      string
+	Body        string
+	Resolved    bool
+	ShouldCache bool
+}
 
 type ResolverMode int
 

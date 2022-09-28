@@ -81,14 +81,26 @@ func GetEntry(es []ImportEntry, parent string, path string) (string, error) {
 // Sass_Import is returned for libsass to resolve.
 //
 //export ImporterBridge
-func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) C.Sass_Import_List {
+func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_List, bool) {
 	var importResolver ImportResolver
 
 	// Retrieve the index
 	idx := int(cidx)
-	importResolver, ok := globalImports.Get(idx).(ImportResolver)
-
-	if !ok {
+	entry := globalImports.Get(idx)
+	var resolver AdvancedImportResolver
+	var ok bool
+	if importResolver, ok = entry.(ImportResolver); ok {
+		resolver = func(url string, prev string) AdvancedImportResolverResult {
+			newUrl, body, resolved := importResolver(url, prev)
+			return AdvancedImportResolverResult{
+				NewUrl:      newUrl,
+				Body:        body,
+				Resolved:    resolved,
+				ShouldCache: false,
+			}
+		}
+	}
+	if resolver, ok = entry.(AdvancedImportResolver); !ok {
 		fmt.Printf("failed to resolve import handler: %d\n", idx)
 	}
 
@@ -102,19 +114,23 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) C.Sass_Import_L
 
 	golist := *(*[]C.Sass_Import_Entry)(unsafe.Pointer(&hdr))
 
-	if importResolver != nil {
-		newURL, body, resolved := importResolver(rel, parent)
-		if resolved {
+	if resolver != nil || true {
+		// resolve with custom
+		result := resolver(
+			rel,
+			parent,
+		)
+		if result.Resolved {
 			// Passing a nil as body is a signal to load the import from the URL.
 			var bodyv *C.char
-			if body != "" {
-				bodyv = C.CString(body)
+			if result.Body != "" {
+				bodyv = C.CString(result.Body)
 			}
-			ent := C.sass_make_import_entry(C.CString(newURL), bodyv, nil)
+			ent := C.sass_make_import_entry(C.CString(result.NewUrl), bodyv, nil)
 			cent := (C.Sass_Import_Entry)(ent)
 			golist[0] = cent
 
-			return list
+			return list, result.ShouldCache
 		}
 	}
 
@@ -128,7 +144,7 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) C.Sass_Import_L
 		golist[0] = cent
 	}
 
-	return list
+	return list, false
 }
 
 type SassImportList C.Sass_Import_List
