@@ -82,25 +82,11 @@ func GetEntry(es []ImportEntry, parent string, path string) (string, error) {
 //
 //export ImporterBridge
 func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_List, bool) {
-	var importResolver ImportResolver
-
 	// Retrieve the index
 	idx := int(cidx)
 	entry := globalImports.Get(idx)
-	var resolver AdvancedImportResolver
-	var ok bool
-	if importResolver, ok = entry.(ImportResolver); ok {
-		resolver = func(url string, prev string) AdvancedImportResolverResult {
-			newUrl, body, resolved := importResolver(url, prev)
-			return AdvancedImportResolverResult{
-				NewUrl:      newUrl,
-				Body:        body,
-				Resolved:    resolved,
-				ShouldCache: false,
-			}
-		}
-	}
-	if resolver, ok = entry.(AdvancedImportResolver); !ok {
+	resolver, ok := entry.(AdvancedImportResolver)
+	if !ok {
 		fmt.Printf("failed to resolve import handler: %d\n", idx)
 	}
 
@@ -123,8 +109,8 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_
 		if result.Resolved {
 			// Passing a nil as body is a signal to load the import from the URL.
 			var bodyv *C.char
-			if result.Body != "" {
-				bodyv = C.CString(result.Body)
+			if result.Source != "" {
+				bodyv = C.CString(result.Source)
 			}
 			ent := C.sass_make_import_entry(C.CString(result.NewUrl), bodyv, nil)
 			cent := (C.Sass_Import_Entry)(ent)

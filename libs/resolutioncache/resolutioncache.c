@@ -2,6 +2,9 @@
 #include "sass/functions.h"
 #include <limits.h>
 #include <string.h>
+#include <stdio.h>
+
+// Useful reference: https://github.com/sass/libsass/blob/master/docs/api-importer.md
 
 // Cost deducted from a cache entry each time it is stepped over.
 // Entries with lower usage heuristics are prioritized for overwriting
@@ -63,14 +66,14 @@ int golibsass_resolution_cache_raw_index(
     GoLibsass_ResolverCache cache,
     const char* key
 ) {
-    return hash_string(key) % (cache.cacheSize);
+    return hash_string(key) % (cache.cache_size);
 }
 
 // Creates a new instance of the resolution cache
-GoLibsass_ResolverCache golibsass_resolution_cache_create(size_t cacheSize) {
+GoLibsass_ResolverCache golibsass_resolution_cache_create(size_t cache_size) {
     GoLibsass_ResolverCache cache = {
-        cacheSize: cacheSize,
-        entries:  calloc(cacheSize, sizeof(GoLibsass_ResolverCacheEntryInternal)),
+        cache_size: cache_size,
+        entries:  calloc(sizeof(GoLibsass_ResolverCacheEntryInternal), cache_size),
     };
 
     return cache;
@@ -93,11 +96,21 @@ void golibsass_resolution_cache_insert(
     // golibsass_resolution_cache_clear or golibsass_resolution_cache_destroy
     Sass_Import_Entry entry
 ) {
+    printf("golibsass_resolution_cache_insert()\n");
     if (entry == NULL) {
         return;
     }
-    const char* entryImporterPath = sass_import_get_imp_path(entry);
-    if (entryImporterPath == NULL) {
+
+    printf("checking cache.entries\n");
+    if (cache.entries == NULL) {
+        printf("uninitialied cache!?\n");
+        return;
+    }
+
+    printf("getting import path from %p (ptr)\n", entry);
+
+    const char* entryImportPath = sass_import_get_imp_path(entry);
+    if (entryImportPath == NULL) {
         // entryData.imp_path = NULL is a special value used to
         // represent an empty entry
         //
@@ -106,15 +119,17 @@ void golibsass_resolution_cache_insert(
         return;
     }
 
-    int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImporterPath);
+    printf("entryImportPath=%p (ptr)", entryImportPath);
+    printf("entryImportPath=%s (str)", entryImportPath);
+
+    int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImportPath);
     GoLibsass_ResolverCacheEntryInternal* leastUsed = (cache.entries) + startingIndex;
 
-    for (int i=0; i<cache.cacheSize; i++) {
-        int realIndex = (startingIndex + i) % cache.cacheSize;
+    for (int i=0; i<cache.cache_size; i++) {
+        int realIndex = (startingIndex + i) % cache.cache_size;
         GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
-        const char* curImporterPath = sass_import_get_imp_path(cur->entryData);
 
-        if (curImporterPath == NULL) {
+        if (cur->entryData == NULL) {
             // found an empty entry, overwrite it
             (*cur).entryData = clone_entry(entry);
             (*cur).usage = 0;
@@ -136,25 +151,49 @@ void golibsass_resolution_cache_insert(
 
 Sass_Import_Entry golibsass_resolution_cache_get(
     GoLibsass_ResolverCache cache,
-    const char* importSpecifier
+    const char* import_specifier
 ) {
-    int startingIndex = golibsass_resolution_cache_raw_index(cache, importSpecifier);
+    int startingIndex = golibsass_resolution_cache_raw_index(cache, import_specifier);
 
-    for (int i=0; i<cache.cacheSize; i++) {
-        int realIndex = (startingIndex + i) % cache.cacheSize;
+    printf(
+        "::: startingIndex=%d cache.cache_size=%d\n",
+        startingIndex,
+        cache.cache_size
+    );
+
+    if (cache.entries == NULL) {
+        printf("uninitialied cache!?\n");
+        return NULL;
+    }
+
+    for (int i=0; i<cache.cache_size; i++) {
+        printf(
+            "startingIndex=%d i=%d cache.cache_size=%d\n",
+            startingIndex,
+            i,
+            cache.cache_size
+        );
+        int realIndex = (startingIndex + i) % cache.cache_size;
         GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
 
-        const char* curImporterPath = sass_import_get_imp_path(cur->entryData);
-
-        if (curImporterPath == NULL) {
+        Sass_Import_Entry entryData = cur->entryData;
+        if (entryData == NULL) {
+            printf("empty entry\n");
             // Found an empty entry - that means there is no entry available
             return NULL;
-        } else if (strncmp(importSpecifier, curImporterPath, CACHE_MAX_SPECIFIER_LEN) == 0) {
+        }
+        
+        printf("entryData=%p\n", entryData);
+
+        const char* curImporterPath = sass_import_get_imp_path(entryData);
+        printf("curImporterPath=%s\n", curImporterPath);
+
+        if (strncmp(import_specifier, curImporterPath, CACHE_MAX_SPECIFIER_LEN) == 0) {
             // Found the entry, return it
             cur->usage += CACHE_USAGE_READ_CREDIT;
             // return the clone since we want the cache to maintain
             // ownership of the cache ddata.
-            return clone_entry(cur->entryData);
+            return clone_entry(entryData);
         } else {
             // we are stepping over an unrelated entry that had a hash collision.
             // Deduct a step-over cost from it to make it more likely to be
@@ -189,11 +228,11 @@ void golibsass_resolution_cache_clear(
     // a layer of indirection
     GoLibsass_ResolverCache cache
 ) {
-    for (int i=0;i<cache.cacheSize;i++) {
+    for (int i=0;i<cache.cache_size;i++) {
         GoLibsass_ResolverCacheEntryInternal entry = cache.entries[i];
         sass_delete_import(entry.entryData);
     }
 
     // zero the cache entries 
-    memset(cache.entries, sizeof(GoLibsass_ResolverCacheEntryInternal) * cache.cacheSize, 0);
+    memset(cache.entries, sizeof(GoLibsass_ResolverCacheEntryInternal) * cache.cache_size, 0);
 }

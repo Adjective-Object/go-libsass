@@ -2,6 +2,7 @@ package libsass
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -39,8 +40,8 @@ type Imports struct {
 }
 
 type ResolverCallback struct {
-	resolverMode libs.ResolverMode
-	resolverFn   libs.ImportResolver
+	resolverOptions libs.ResolverOptions
+	resolverFn      libs.AdvancedImportResolver
 }
 
 func NewImports() *Imports {
@@ -49,22 +50,50 @@ func NewImports() *Imports {
 	}
 }
 
+func wrapLegacyResolver(legacyResolver libs.ImportResolver) libs.AdvancedImportResolver {
+	return func(url string, prev string) libs.ResolverResult {
+		newUrl, body, resolved := legacyResolver(url, prev)
+		return libs.ResolverResult{
+			NewUrl:      newUrl,
+			Source:      body,
+			Resolved:    resolved,
+			ShouldCache: false,
+		}
+	}
+}
+
+// Deprecated, prefer NewImportsWithResolverOption
 func NewImportsWithResolver(resolver libs.ImportResolver) *Imports {
 	return &Imports{
 		closing: make(chan struct{}),
 		resolver: ResolverCallback{
-			resolverMode: libs.ResolverModeImporterUrl,
-			resolverFn:   resolver,
+			resolverOptions: libs.ResolverOptions{
+				ResolverMode: libs.ResolverModeImporterUrl,
+			},
+			resolverFn: wrapLegacyResolver(resolver),
 		},
 	}
 }
 
+// Deprecated, prefer NewImportsWithResolverOption
 func NewImportsWithAbsResolver(resolver libs.ImportResolver) *Imports {
 	return &Imports{
 		closing: make(chan struct{}),
 		resolver: ResolverCallback{
-			resolverMode: libs.ResolverModeImporterAbsPath,
-			resolverFn:   resolver,
+			resolverOptions: libs.ResolverOptions{
+				ResolverMode: libs.ResolverModeImporterAbsPath,
+			},
+			resolverFn: wrapLegacyResolver(resolver),
+		},
+	}
+}
+
+func NewImportsWithResolverOption(options libs.ResolverOptions, resolver libs.AdvancedImportResolver) *Imports {
+	return &Imports{
+		closing: make(chan struct{}),
+		resolver: ResolverCallback{
+			resolverOptions: options,
+			resolverFn:      resolver,
 		},
 	}
 }
@@ -150,20 +179,27 @@ func (p *Imports) Bind(opts libs.SassOptions) {
 	}
 	p.RUnlock()
 
-	wrappedResolverFn := func(url string, prev string) (newURL string, body string, resolved bool) {
+	wrappedResolverFn := func(url string, prev string) libs.ResolverResult {
+		// failed to resolve
+		fmt.Println("!!!ressolver!!!!!!")
 		if p.resolver.resolverFn != nil {
-			newURL, body, resolved = p.resolver.resolverFn(url, prev)
-			if resolved {
-				return
+			result := p.resolver.resolverFn(url, prev)
+			if result.Resolved {
+				return result
 			}
 		}
+		// fallback: check the other imports
 		entry, err := libs.GetEntry(entries, prev, url)
 		if err == nil {
-			return url, entry, true
+			return libs.ResolverResult{
+				NewUrl:   url,
+				Source:   entry,
+				Resolved: true,
+			}
 		}
-		return "", "", false
+		return libs.ResolverResult{}
 	}
 
 	// set entries somewhere so GC doesn't collect it
-	p.idx = libs.BindImporter(opts, p.resolver.resolverMode, wrappedResolverFn)
+	p.idx = libs.BindImporter(opts, p.resolver.resolverOptions, wrappedResolverFn)
 }

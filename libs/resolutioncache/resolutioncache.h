@@ -38,7 +38,7 @@ typedef struct {
 // each of their project's builds.
 typedef struct {
     // Length of the entries array
-    int cacheSize;
+    int cache_size;
     // fixed-length list of cache entries
     GoLibsass_ResolverCacheEntryInternal *entries;
 } GoLibsass_ResolverCache;
@@ -58,7 +58,7 @@ void golibsass_resolution_cache_insert(
 // the callee is responsible for deleting
 Sass_Import_Entry golibsass_resolution_cache_get(
     GoLibsass_ResolverCache cache,
-    const char* importSpecifier
+    const char* import_specifier
 );
 
 // free all entires in the resolution cache
@@ -66,13 +66,5 @@ void golibsass_resolution_cache_clear(GoLibsass_ResolverCache cache);
 
 // free all entires in the resolution cache, then free the cache's internal buffer itself
 void golibsass_resolution_cache_destroy(GoLibsass_ResolverCache cache);
-
-// Cookie associated with the sass import resolver
-typedef struct {
-    // index into the global function map used to manage callbacks in goland
-    uintptr_t idx;
-    // associated cache instance for this resolver
-    GoLibsass_ResolverCache cache;
-} GoLibsass_InternalCookie;
 
 #endif

@@ -1,8 +1,15 @@
 package libs
 
+// #include "./resolutioncache/cookie.c"
 // #include "./resolutioncache/resolutioncache.c"
 // #include "./resolutioncache/importerhandler.c"
+//
+//
+// //test
+//
 import "C"
+
+// C changes will not be picked up unless you change the above cgo snipp
 import "unsafe"
 
 var globalImports SafeMap
@@ -12,12 +19,22 @@ var globalImports SafeMap
 type ImportResolver func(url string, prev string) (newURL string, body string, resolved bool)
 
 // Structured version of ImportResolver that can be used for C-side caching, etc
-type AdvancedImportResolver func(url string, prev string) AdvancedImportResolverResult
-type AdvancedImportResolverResult struct {
+type AdvancedImportResolver func(url string, prev string) ResolverResult
+type ResolverResult struct {
 	NewUrl      string
-	Body        string
+	Source      string
 	Resolved    bool
 	ShouldCache bool
+}
+
+type ResolverOptions struct {
+	// Resolver mode to use, either
+	// libs.ResolverModeImporterUrl or
+	// libs.ResolverModeImporterAbsPath
+	ResolverMode ResolverMode
+	// Size of the C-side resolution cache to use.
+	// If cacheSize is zero, no cache will be constructed.
+	CacheSize int
 }
 
 type ResolverMode int
@@ -32,13 +49,20 @@ func init() {
 }
 
 // BindImporter attaches a custom importer Go function to an import in Sass
-func BindImporter(opts SassOptions, resolverMode ResolverMode, resolver ImportResolver) int {
+func BindImporter(
+	opts SassOptions,
+	resolverOptions ResolverOptions,
+	resolver AdvancedImportResolver,
+) int {
 
 	idx := globalImports.Set(resolver)
-	ptr := unsafe.Pointer(uintptr(idx))
+	importerCookie := C.golibsass_cookie_create(
+		C.uintptr_t(idx),
+		C.uintptr_t(resolverOptions.CacheSize),
+	)
 
 	var handler unsafe.Pointer
-	if resolverMode == ResolverModeImporterAbsPath {
+	if resolverOptions.ResolverMode == ResolverModeImporterAbsPath {
 		handler = C.SassImporterAbsHandler
 	} else {
 		handler = C.SassImporterPathsHandler
@@ -47,8 +71,9 @@ func BindImporter(opts SassOptions, resolverMode ResolverMode, resolver ImportRe
 	imper := C.sass_make_importer(
 		C.Sass_Importer_Fn(handler),
 		C.double(0),
-		ptr,
+		unsafe.Pointer(importerCookie),
 	)
+
 	impers := C.sass_make_importer_list(1)
 	C.sass_importer_set_list_entry(impers, 0, imper)
 
