@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/master/extensions/configuration-editing/schemas/devContainer.schema.json",
+  "name": "go-libsass development container",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "args": {
+      "USERNAME": "vscode"
+    }
+  },
+  "remoteUser": "vscode",
+  // see https://github.com/microsoft/vscode-remote-release/issues/1333#issuecomment-528234042
+  "workspaceMount": "",
+  "runArgs": [
+    "--init",
+    "--volume=${localWorkspaceFolder}:/workspaces/go-libsass:Z"
+  ],
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/zsh"
+  },
+  "workspaceFolder": "/workspaces/go-libsass",
+  "postStartCommand": "/bin/bash .devcontainer/config_fetch.sh",
+  "extensions": [],
+  "remoteEnv": {
+    "VM_REPO_PATH": "/workspaces/go-libsass"
+  },
+  "forwardPorts": [
+    3000,
+    30001
+  ]
+}
