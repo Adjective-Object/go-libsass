@@ -1,12 +1,6 @@
 package libs
 
-// #include "./resolutioncache/cookie.c"
-// #include "./resolutioncache/resolutioncache.c"
 // #include "./resolutioncache/importerhandler.c"
-//
-//
-// //test
-//
 import "C"
 
 // C changes will not be picked up unless you change the above cgo snipp
@@ -48,22 +42,13 @@ func init() {
 	globalImports.init()
 }
 
-// BindImporter attaches a custom importer Go function to an import in Sass
+// BindImporter the resolver callback function + cache stored in the
+// ResolverCookie to an importer in the sass options instance
 func BindImporter(
 	opts SassOptions,
+	resolverCookie *ResolverCookie,
 	resolverOptions ResolverOptions,
-	resolver AdvancedImportResolver,
-) int {
-
-	// TODO this should be allocated on import creation instead of on
-	// import binding -- this will persist the cache between multiple
-	// compilations
-	idx := globalImports.Set(resolver)
-	importerCookie := C.golibsass_cookie_create(
-		C.uintptr_t(idx),
-		C.uintptr_t(resolverOptions.CacheSize),
-	)
-
+) {
 	var handler unsafe.Pointer
 	if resolverOptions.ResolverMode == ResolverModeImporterAbsPath {
 		handler = C.SassImporterAbsHandler
@@ -74,7 +59,9 @@ func BindImporter(
 	imper := C.sass_make_importer(
 		C.Sass_Importer_Fn(handler),
 		C.double(0),
-		unsafe.Pointer(importerCookie),
+		unsafe.Pointer(
+			resolverCookie.cCookiePtr,
+		),
 	)
 
 	impers := C.sass_make_importer_list(1)
@@ -84,7 +71,6 @@ func BindImporter(
 		(*C.struct_Sass_Options)(unsafe.Pointer(opts)),
 		impers,
 	)
-	return idx
 }
 
 func RemoveImporter(idx int) error {

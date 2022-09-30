@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "sass/context.h"
-#include "cookie.h"
+#include "resolvercookie.h"
 #include "resolutioncache.h"
 #include "importerhandler.h"
 
@@ -27,7 +27,7 @@ Sass_Import_List sassCommonHandler(
   printf("sassCommonHandler path=%s, useAbsPath=%i\n", cur_path, use_abs_path);
   GoLibsass_ResolverCookie* cookie = (GoLibsass_ResolverCookie*) sass_importer_get_cookie(cb);
   printf("cookie!=%p\n", cookie);
-  bool hasCache = golibsass_cookie_hascache(cookie);
+  bool hasCache = golibsass_resolvercookie_hascache(cookie);
   printf("hasCache?=%d\n", hasCache);
   if (hasCache) {
     Sass_Import_Entry cached = golibsass_resolution_cache_get(cookie->cache, cur_path);
@@ -59,12 +59,12 @@ Sass_Import_List sassCommonHandler(
     printf("new_import=%p cookie.entries=%p\n", new_import, cookie->cache.entries);
     if (new_import != NULL) {
       // If we resolved some import, save it in the cache
-      printf("calling golibsass_resolution_cache_insert...");
+      printf("calling golibsass_resolution_cache_insert...\n");
       golibsass_resolution_cache_insert(cookie->cache, new_import);
     }
   }
 
-  printf("resolving to: %p", list);
+  printf("resolving to: %p\n", list);
 
   return list;
 }

@@ -11,7 +11,7 @@ func TestSassImport_single(t *testing.T) {
 
 	var out bytes.Buffer
 	ctx := newContext()
-	ctx.Imports.m = make(map[string]Import)
+	ctx.Imports.Init()
 	ctx.Imports.Add("", "a", []byte("a { color: blue; }"))
 	err := ctx.compile(&out, in)
 	if err != nil {

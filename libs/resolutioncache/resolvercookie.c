@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include "cookie.h"
+#include "resolvercookie.h"
+#include "resolutioncache.h"
 
-GoLibsass_ResolverCookie* golibsass_cookie_create(
+GoLibsass_ResolverCookie* golibsass_resolvercookie_create(
     uintptr_t callback_idx,
     uintptr_t cache_size
 ) {
@@ -17,14 +18,21 @@ GoLibsass_ResolverCookie* golibsass_cookie_create(
     return cookie;
 }
 
-uintptr_t golibsass_cookie_idx(
+
+void golibsass_resolvercookie_free(
+    GoLibsass_ResolverCookie* cookie
+) {
+    golibsass_resolution_cache_destroy(cookie->cache);
+}
+
+uintptr_t golibsass_resolvercookie_idx(
     GoLibsass_ResolverCookie *cookie,
     uintptr_t cache_size
 ) {
     return cookie->idx;
 }
 
-bool golibsass_cookie_hascache(
+bool golibsass_resolvercookie_hascache(
     GoLibsass_ResolverCookie *cookie
 ) {
     return cookie->cache.cache_size > 0;

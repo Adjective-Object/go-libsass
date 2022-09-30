@@ -14,19 +14,22 @@ typedef struct {
 } GoLibsass_ResolverCookie;
 
 // creates a new cookie
-GoLibsass_ResolverCookie* golibsass_cookie_create(
+GoLibsass_ResolverCookie* golibsass_resolvercookie_create(
     uintptr_t callback_idx,
     uintptr_t cache_size
 );
 
+// releases a cookie and the associated resolver cache, if any
+void golibsass_resolvercookie_free(GoLibsass_ResolverCookie* cookie);
+
 // Gets the index off of a cookie
-uintptr_t golibsass_cookie_idx(
+uintptr_t golibsass_resolvercookie_idx(
     GoLibsass_ResolverCookie *cookie,
     uintptr_t cache_size
 );
 
 // Checks if a cookie has an initialized cache
-bool golibsass_cookie_hascache(
+bool golibsass_resolvercookie_hascache(
     GoLibsass_ResolverCookie *cookie
 );
 

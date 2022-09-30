@@ -112,7 +112,7 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_
 			if result.Source != "" {
 				bodyv = C.CString(result.Source)
 			}
-			ent := C.sass_make_import_entry(C.CString(result.NewUrl), bodyv, nil)
+			ent := C.sass_make_import(url, C.CString(result.NewUrl), bodyv, nil)
 			cent := (C.Sass_Import_Entry)(ent)
 			golist[0] = cent
 
@@ -121,11 +121,11 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_
 	}
 
 	if strings.HasPrefix(rel, "compass") {
-		ent := C.sass_make_import_entry(url, C.CString(""), nil)
+		ent := C.sass_make_import(url, url, C.CString(""), nil)
 		cent := (C.Sass_Import_Entry)(ent)
 		golist[0] = cent
 	} else {
-		ent := C.sass_make_import_entry(url, nil, nil)
+		ent := C.sass_make_import(url, url, nil, nil)
 		cent := (C.Sass_Import_Entry)(ent)
 		golist[0] = cent
 	}

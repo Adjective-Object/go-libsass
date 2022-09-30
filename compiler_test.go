@@ -224,8 +224,9 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 		}))
 
 	// create and run the first compilation
+	var dst2 bytes.Buffer
 	comp, err := New(
-		&dst,
+		&dst2,
 		nil,
 		Path("test/scss/file.scss"),
 		imports,
@@ -244,8 +245,8 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 .b {
   color: #bbbbbb; }
 `
-	if expectedSource != dst.String() {
-		t.Errorf("args: %s wanted: %s", dst.String(), expectedSource)
+	if expectedSource != dst2.String() {
+		t.Errorf("first compilation got: %s wanted: %s", dst2.String(), expectedSource)
 	}
 
 	expectedAbsArgs := `[[a test/scss/file.scss] [b a]]`
@@ -269,7 +270,7 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 	}
 
 	if expectedSource != dst.String() {
-		t.Errorf("got: %s wanted: %s", dst.String(), expectedSource)
+		t.Errorf("second compilation got: %s wanted: %s", dst.String(), expectedSource)
 	}
 
 	// should be called again

@@ -37,25 +37,33 @@ Sass_Import_Entry clone_entry(Sass_Import_Entry original){
     char *new_source = NULL;
     char *new_srcmap = NULL;
 
+    printf("cloned entry{\n");
+
     if (orig_imp_path != NULL) {
         new_imp_path = malloc(sizeof(char) * (strnlen(orig_imp_path, CACHE_MAX_SPECIFIER_LEN) + 1));
         strcpy(new_imp_path, orig_imp_path);
+        printf("  new_imp_path:%s,\n", new_imp_path);
     }
 
     if (orig_abs_path != NULL) {
         new_abs_path = malloc(sizeof(char) * (strnlen(orig_abs_path, CACHE_MAX_FILEPATH_LEN) + 1));
         strcpy(new_abs_path, orig_abs_path);
+        printf("  new_abs_path:%s,\n", new_abs_path);
     }
 
     if (orig_source != NULL) {
         new_source = malloc(sizeof(char) * (strnlen(orig_source, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
         strcpy(new_source, orig_source);
+        printf("    new_source:%s,\n", new_source);
     }
 
     if (orig_srcmap != NULL) {
         new_srcmap = malloc(sizeof(char) * (strnlen(orig_srcmap, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
         strcpy(new_srcmap, orig_srcmap);
+        printf("    new_srcmap:%s,\n", new_srcmap);
     }
+
+    printf("}");
 
     return sass_make_import(
         new_imp_path,
@@ -71,6 +79,7 @@ int hash_string(const char* hashString) {
     for (int i=0; i<hashString[i] != '\0'; i++) {
         hash = (hash << 1) ^ hashString[i];
     }
+    return hash;
 }
 
 // Gets the initial index into the cache that should be checked for the
@@ -112,18 +121,18 @@ void golibsass_resolution_cache_insert(
     // golibsass_resolution_cache_clear or golibsass_resolution_cache_destroy
     Sass_Import_Entry entry
 ) {
-    printf("golibsass_resolution_cache_insert()\n");
+    printf("golibsass_resolution_cache_insert(%p)\n", cache.entries);
     if (entry == NULL) {
         return;
     }
 
-    printf("checking cache.entries\n");
+    printf("  checking cache.entries\n");
     if (cache.entries == NULL) {
-        printf("uninitialied cache!?\n");
+        printf("    uninitialied cache!?\n");
         return;
     }
 
-    printf("getting import path from %p (ptr)\n", entry);
+    printf("  getting import path from %p (ptr)\n", entry);
 
     const char* entryImportPath = sass_import_get_imp_path(entry);
     if (entryImportPath == NULL) {
@@ -135,8 +144,8 @@ void golibsass_resolution_cache_insert(
         return;
     }
 
-    printf("entryImportPath=%p (ptr)", entryImportPath);
-    printf("entryImportPath=%s (str)", entryImportPath);
+    printf("  entryImportPath=%p (ptr)\n", entryImportPath);
+    printf("  entryImportPath=%s (str)\n", entryImportPath);
 
     int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImportPath);
     GoLibsass_ResolverCacheEntryInternal* leastUsed = (cache.entries) + startingIndex;
@@ -146,11 +155,26 @@ void golibsass_resolution_cache_insert(
         GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
 
         if (cur->entryData == NULL) {
+            printf("    overwriting entry at offset %d (%p) startingIndex=%d, i=%d\n",
+                realIndex, cur, startingIndex, i);
             // found an empty entry, overwrite it
-            (*cur).entryData = clone_entry(entry);
-            (*cur).usage = 0;
+            cur->entryData = clone_entry(entry);
+            cur->usage = 0;
             return;
         }
+
+        // check if the current entry is a duplicate of the current entry
+        const char* curImporterPath = sass_import_get_imp_path(cur->entryData);
+        printf("curImporterPath=%s\n", curImporterPath);
+
+        if (strncmp(entryImportPath, curImporterPath, CACHE_MAX_SPECIFIER_LEN) == 0) {
+            printf("    overwriting duplicate entry at offset %d (%p) startingIndex=%d, i=%d\n",
+                realIndex, cur, startingIndex, i);
+            // Found the entry, return it
+            cur->usage += CACHE_USAGE_READ_CREDIT;
+            cur->entryData = clone_entry(entry);
+            return;
+        } 
 
         if (cur->usage < leastUsed->usage) {
             leastUsed = cur;
@@ -169,6 +193,8 @@ Sass_Import_Entry golibsass_resolution_cache_get(
     GoLibsass_ResolverCache cache,
     const char* import_specifier
 ) {
+    printf("golibsass_resolution_cache_get(%p, %s)\n", cache.entries, import_specifier);
+
     int startingIndex = golibsass_resolution_cache_raw_index(cache, import_specifier);
 
     printf(
@@ -222,7 +248,7 @@ Sass_Import_Entry golibsass_resolution_cache_get(
     return NULL;
 }
 
-void golibsass_resolution_cache_destory(
+void golibsass_resolution_cache_destroy(
     // The cache to destroy
     //
     // Note that the cache object itself is immutable, and the actual
