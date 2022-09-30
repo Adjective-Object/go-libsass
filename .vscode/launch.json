@@ -12,7 +12,7 @@
             "target": "${workspaceRoot}/go-libsass.test",
             "cwd": "${workspaceRoot}",
             "valuesFormatting": "parseText",
-            "arguments": "-run TestCompiler_optionresolver_caching"
+            "arguments": "-test.run TestCompiler_optionresolver_caching"
         },
         
     ]

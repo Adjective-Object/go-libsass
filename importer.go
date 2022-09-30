@@ -10,6 +10,9 @@ import (
 	"github.com/wellington/go-libsass/libs"
 )
 
+// #include "resolutioncache.h"
+import "C"
+
 var (
 	ErrImportNotFound = errors.New("Import unreachable or not found")
 )
@@ -37,6 +40,9 @@ type Imports struct {
 	m        map[string]Import
 	resolver ResolverCallback
 	idx      int
+	// Handle to the imports cache associated with
+	// this imports object
+	importsCachePtr *(C.GoLibsass_ResolverCache)
 }
 
 type ResolverCallback struct {

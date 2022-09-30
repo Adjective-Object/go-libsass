@@ -55,6 +55,9 @@ func BindImporter(
 	resolver AdvancedImportResolver,
 ) int {
 
+	// TODO this should be allocated on import creation instead of on
+	// import binding -- this will persist the cache between multiple
+	// compilations
 	idx := globalImports.Set(resolver)
 	importerCookie := C.golibsass_cookie_create(
 		C.uintptr_t(idx),

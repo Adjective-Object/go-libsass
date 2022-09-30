@@ -19,7 +19,7 @@
 #define CACHE_MAX_FILEPATH_LEN 1048576
 // In order to satisfy compiler warnings, put an arbitrary cap on
 // maximum sass file body size of 1GB
-#define CACHE_MAX_BODY_OR_SRCMAP_LEN 1073741824 
+#define CACHE_MAX_BODY_OR_SRCMAP_LEN 1073741824
 
 // utility to clone a Sass_Import_Entry.
 //
@@ -32,14 +32,30 @@ Sass_Import_Entry clone_entry(Sass_Import_Entry original){
     const char *orig_source = sass_import_get_source(original);
     const char *orig_srcmap = sass_import_get_srcmap(original);
 
-    char *new_imp_path = malloc(sizeof(char) * (strnlen(orig_imp_path, CACHE_MAX_SPECIFIER_LEN) + 1));
-    char *new_abs_path = malloc(sizeof(char) * (strnlen(orig_abs_path, CACHE_MAX_FILEPATH_LEN) + 1));
-    char *new_source = malloc(sizeof(char) * (strnlen(orig_source, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
-    char *new_srcmap = malloc(sizeof(char) * (strnlen(orig_srcmap, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
+    char *new_imp_path = NULL;
+    char *new_abs_path = NULL;
+    char *new_source = NULL;
+    char *new_srcmap = NULL;
 
-    strcpy(new_imp_path, orig_imp_path);
-    strcpy(new_source, orig_source);
-    strcpy(new_srcmap, orig_srcmap);
+    if (orig_imp_path != NULL) {
+        new_imp_path = malloc(sizeof(char) * (strnlen(orig_imp_path, CACHE_MAX_SPECIFIER_LEN) + 1));
+        strcpy(new_imp_path, orig_imp_path);
+    }
+
+    if (orig_abs_path != NULL) {
+        new_abs_path = malloc(sizeof(char) * (strnlen(orig_abs_path, CACHE_MAX_FILEPATH_LEN) + 1));
+        strcpy(new_abs_path, orig_abs_path);
+    }
+
+    if (orig_source != NULL) {
+        new_source = malloc(sizeof(char) * (strnlen(orig_source, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
+        strcpy(new_source, orig_source);
+    }
+
+    if (orig_srcmap != NULL) {
+        new_srcmap = malloc(sizeof(char) * (strnlen(orig_srcmap, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
+        strcpy(new_srcmap, orig_srcmap);
+    }
 
     return sass_make_import(
         new_imp_path,
