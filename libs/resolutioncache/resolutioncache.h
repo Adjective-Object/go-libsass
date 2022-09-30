@@ -2,6 +2,7 @@
 #define GO_LIBSASS_RESOLUTION_CACHE_H
 #include <stdint.h>
 #include <stdlib.h>
+#include "rwmutex.h"
 #include "sass/functions.h"
 
 /*
@@ -39,6 +40,8 @@ typedef struct {
 typedef struct {
     // Length of the entries array
     int cache_size;
+    // readwrite mutex on the contents of entries
+    golibsass_rwmutex *mutex;
     // fixed-length list of cache entries
     GoLibsass_ResolverCacheEntryInternal *entries;
 } GoLibsass_ResolverCache;

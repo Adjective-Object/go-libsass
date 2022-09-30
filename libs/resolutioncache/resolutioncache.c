@@ -96,8 +96,12 @@ int golibsass_resolution_cache_raw_index(
 
 // Creates a new instance of the resolution cache
 GoLibsass_ResolverCache golibsass_resolution_cache_create(size_t cache_size) {
+    golibsass_rwmutex* mutex = malloc(sizeof(golibsass_rwmutex));
+    golibsass_rwmutex_init(mutex);
+
     GoLibsass_ResolverCache cache = {
         cache_size: cache_size,
+        mutex: mutex,
         entries:  calloc(sizeof(GoLibsass_ResolverCacheEntryInternal), cache_size),
     };
 
@@ -147,6 +151,8 @@ void golibsass_resolution_cache_insert(
     printf("  entryImportPath=%p (ptr)\n", entryImportPath);
     printf("  entryImportPath=%s (str)\n", entryImportPath);
 
+    golibsass_rwmutex_wrlock(cache.mutex);
+
     int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImportPath);
     GoLibsass_ResolverCacheEntryInternal* leastUsed = (cache.entries) + startingIndex;
 
@@ -160,6 +166,7 @@ void golibsass_resolution_cache_insert(
             // found an empty entry, overwrite it
             cur->entryData = clone_entry(entry);
             cur->usage = 0;
+            golibsass_rwmutex_wrunlock(cache.mutex);
             return;
         }
 
@@ -173,6 +180,7 @@ void golibsass_resolution_cache_insert(
             // Found the entry, return it
             cur->usage += CACHE_USAGE_READ_CREDIT;
             cur->entryData = clone_entry(entry);
+            golibsass_rwmutex_wrunlock(cache.mutex);
             return;
         } 
 
@@ -186,6 +194,7 @@ void golibsass_resolution_cache_insert(
     sass_delete_import(leastUsed->entryData);
     leastUsed->entryData = clone_entry(entry);
     leastUsed->usage = 0;
+    golibsass_rwmutex_wrunlock(cache.mutex);
 }
 
 
@@ -208,6 +217,9 @@ Sass_Import_Entry golibsass_resolution_cache_get(
         return NULL;
     }
 
+
+    golibsass_rwmutex_rdlock(cache.mutex);
+
     for (int i=0; i<cache.cache_size; i++) {
         printf(
             "startingIndex=%d i=%d cache.cache_size=%d\n",
@@ -222,6 +234,7 @@ Sass_Import_Entry golibsass_resolution_cache_get(
         if (entryData == NULL) {
             printf("empty entry\n");
             // Found an empty entry - that means there is no entry available
+            golibsass_rwmutex_rdunlock(cache.mutex);
             return NULL;
         }
         
@@ -235,6 +248,7 @@ Sass_Import_Entry golibsass_resolution_cache_get(
             cur->usage += CACHE_USAGE_READ_CREDIT;
             // return the clone since we want the cache to maintain
             // ownership of the cache ddata.
+            golibsass_rwmutex_rdunlock(cache.mutex);
             return clone_entry(entryData);
         } else {
             // we are stepping over an unrelated entry that had a hash collision.
@@ -245,6 +259,7 @@ Sass_Import_Entry golibsass_resolution_cache_get(
     }
 
     // no matches
+    golibsass_rwmutex_rdunlock(cache.mutex);
     return NULL;
 }
 
@@ -257,7 +272,11 @@ void golibsass_resolution_cache_destroy(
     // a layer of indirection
     GoLibsass_ResolverCache cache
 ) {
+    // free up all entries from the cache
     golibsass_resolution_cache_clear(cache);
+    // clean up the rw lock
+    golibsass_rwmutex_destroy(cache.mutex);
+    // free the cache entries buffer itself
     free(cache.entries);
 }
 
@@ -270,6 +289,7 @@ void golibsass_resolution_cache_clear(
     // a layer of indirection
     GoLibsass_ResolverCache cache
 ) {
+    golibsass_rwmutex_wrlock(cache.mutex);
     for (int i=0;i<cache.cache_size;i++) {
         GoLibsass_ResolverCacheEntryInternal *entry = cache.entries+i;
         Sass_Import_Entry entryDataPtr = entry->entryData;
@@ -282,4 +302,5 @@ void golibsass_resolution_cache_clear(
 
     // zero the cache entries 
     memset(cache.entries, sizeof(GoLibsass_ResolverCacheEntryInternal) * cache.cache_size, 0);
+    golibsass_rwmutex_wrunlock(cache.mutex);
 }

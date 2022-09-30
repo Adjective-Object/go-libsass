@@ -73,6 +73,13 @@
         "typeinfo": "cpp",
         "stdio.h": "c",
         "resolvercookie.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "pthread.h": "c",
+        "endian.h": "c",
+        "pthreadtypes.h": "c",
+        "wordsize.h": "c",
+        "struct_timespec.h": "c",
+        "struct___jmp_buf_tag.h": "c",
+        "__sigset_t.h": "c"
     }
 }
