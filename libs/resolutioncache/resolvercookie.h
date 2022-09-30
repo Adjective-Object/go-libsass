@@ -28,6 +28,11 @@ uintptr_t golibsass_resolvercookie_idx(
     uintptr_t cache_size
 );
 
+// Empties the associated cache of the cookie, if any
+void golibsass_resolvercookie_clearcache(
+    GoLibsass_ResolverCookie* cookie
+);
+
 // Checks if a cookie has an initialized cache
 bool golibsass_resolvercookie_hascache(
     GoLibsass_ResolverCookie *cookie

@@ -271,8 +271,13 @@ void golibsass_resolution_cache_clear(
     GoLibsass_ResolverCache cache
 ) {
     for (int i=0;i<cache.cache_size;i++) {
-        GoLibsass_ResolverCacheEntryInternal entry = cache.entries[i];
-        sass_delete_import(entry.entryData);
+        GoLibsass_ResolverCacheEntryInternal *entry = cache.entries+i;
+        Sass_Import_Entry entryDataPtr = entry->entryData;
+        if (entryDataPtr != NULL) {
+            sass_delete_import(entryDataPtr);
+            entry->entryData = NULL;
+            entry->usage = 0;
+        }
     }
 
     // zero the cache entries 

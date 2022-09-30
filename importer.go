@@ -28,6 +28,7 @@ func (i Import) ModTime() time.Time {
 	return i.mod
 }
 
+// a map with key of "path/to/file"
 type importOverrides struct {
 	sync.RWMutex
 	m map[string]Import
@@ -132,7 +133,6 @@ func (p *importOverrides) EntriesList() []libs.ImportEntry {
 	return entries
 }
 
-// Imports is a map with key of "path/to/file"
 type Imports struct {
 	importOverrides
 	wg      sync.WaitGroup
@@ -216,4 +216,12 @@ func (p *Imports) Bind(opts libs.SassOptions) {
 		p.resolverCookie,
 		p.resolverOptions,
 	)
+}
+
+// Bind accepts a SassOptions and adds the registered
+// importers in the context.
+func (p *Imports) ClearResolverCookieCache() {
+	if p.resolverCookie != nil {
+		p.resolverCookie.ClearCache()
+	}
 }

@@ -195,11 +195,8 @@ func TestCompiler_path_withabsresolver(t *testing.T) {
 	}
 }
 
-func TestCompiler_optionresolver_caching(t *testing.T) {
-	var dst bytes.Buffer
-
+func TestCompiler_optionresolver_cachehit(t *testing.T) {
 	absArgs := [][]string{}
-
 	imports := ImportsOption(NewImportsWithResolverOption(libs.ResolverOptions{
 		ResolverMode: libs.ResolverModeImporterUrl,
 		CacheSize:    10,
@@ -223,21 +220,26 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 			return libs.ResolverResult{}
 		}))
 
+	runcomp := func() bytes.Buffer {
+		var dst bytes.Buffer
+		comp, err := New(
+			&dst,
+			nil,
+			Path("test/scss/file.scss"),
+			imports,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = comp.Run()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dst
+	}
+
 	// create and run the first compilation
-	var dst2 bytes.Buffer
-	comp, err := New(
-		&dst2,
-		nil,
-		Path("test/scss/file.scss"),
-		imports,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = comp.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
+	comp1Out := runcomp()
 
 	expectedSource := `.a {
   color: #aaaaaa; }
@@ -245,8 +247,8 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 .b {
   color: #bbbbbb; }
 `
-	if expectedSource != dst2.String() {
-		t.Errorf("first compilation got: %s wanted: %s", dst2.String(), expectedSource)
+	if expectedSource != comp1Out.String() {
+		t.Errorf("first compilation got: %s wanted: %s", comp1Out.String(), expectedSource)
 	}
 
 	expectedAbsArgs := `[[a test/scss/file.scss] [b a]]`
@@ -255,27 +257,94 @@ func TestCompiler_optionresolver_caching(t *testing.T) {
 	}
 
 	// create and run another compilation, reusing the same imports object
-	comp, err = New(
-		&dst,
-		nil,
-		Path("test/scss/file.scss"),
-		imports,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = comp.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
+	comp2Out := runcomp()
 
-	if expectedSource != dst.String() {
-		t.Errorf("second compilation got: %s wanted: %s", dst.String(), expectedSource)
+	if expectedSource != comp2Out.String() {
+		t.Errorf("second compilation got: %s wanted: %s", comp2Out.String(), expectedSource)
 	}
 
 	// should be called again
 	expectedAbsArgs = `[[a test/scss/file.scss] [b a] [a test/scss/file.scss]]`
 	if absArgsStr := fmt.Sprintf("%+v", absArgs); expectedAbsArgs != absArgsStr {
 		t.Errorf("second compilation should only have args for uncached values: %s wanted: %s", absArgsStr, expectedAbsArgs)
+	}
+}
+
+func TestCompiler_optionresolver_cacheclear(t *testing.T) {
+	absArgs := [][]string{}
+	imports := NewImportsWithResolverOption(libs.ResolverOptions{
+		ResolverMode: libs.ResolverModeImporterUrl,
+		CacheSize:    10,
+	},
+		func(importedUrl string, importerPath string) libs.ResolverResult {
+			absArgs = append(absArgs, []string{importedUrl, importerPath})
+			if importedUrl == "a" {
+				return libs.ResolverResult{
+					NewUrl:   "test/scss/a.scss",
+					Source:   ".a { color: #aaaaaa }\n@import 'b';",
+					Resolved: true,
+				}
+			} else if importedUrl == "b" {
+				return libs.ResolverResult{
+					NewUrl:      "test/scss/b.scss",
+					Source:      ".b { color: #bbbbbb }",
+					Resolved:    true,
+					ShouldCache: true,
+				}
+			}
+			return libs.ResolverResult{}
+		})
+	importsOpt := ImportsOption(imports)
+
+	runcomp := func() bytes.Buffer {
+		var dst bytes.Buffer
+		comp, err := New(
+			&dst,
+			nil,
+			Path("test/scss/file.scss"),
+			importsOpt,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = comp.Run()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dst
+	}
+
+	// create and run the first compilation
+	comp1Out := runcomp()
+
+	expectedSource := `.a {
+  color: #aaaaaa; }
+
+.b {
+  color: #bbbbbb; }
+`
+	if expectedSource != comp1Out.String() {
+		t.Errorf("first compilation got: %s wanted: %s", comp1Out.String(), expectedSource)
+	}
+
+	expectedAbsArgs := `[[a test/scss/file.scss] [b a]]`
+	if absArgsStr := fmt.Sprintf("%+v", absArgs); expectedAbsArgs != absArgsStr {
+		t.Errorf("args: %s wanted: %s", absArgsStr, expectedAbsArgs)
+	}
+
+	// clear the cache between runs
+	imports.ClearResolverCookieCache()
+
+	// create and run another compilation, reusing the same imports object
+	comp2Out := runcomp()
+
+	if expectedSource != comp2Out.String() {
+		t.Errorf("second compilation got: %s wanted: %s", comp2Out.String(), expectedSource)
+	}
+
+	// should be called again
+	expectedAbsArgs = `[[a test/scss/file.scss] [b a] [a test/scss/file.scss] [b a]]`
+	if absArgsStr := fmt.Sprintf("%+v", absArgs); expectedAbsArgs != absArgsStr {
+		t.Errorf("second compilation should get called again: %s wanted: %s", absArgsStr, expectedAbsArgs)
 	}
 }

@@ -12,6 +12,8 @@ type ResolverCookie struct {
 	cCookiePtr *C.GoLibsass_ResolverCookie
 }
 
+// Creates the persistent ResolverCookie, a wrapper for
+// a corresponding cookie object passed to sass.
 func CreateImportsResolverCookie(
 	resolverOptions ResolverOptions,
 	resolver AdvancedImportResolver,
@@ -37,4 +39,12 @@ func CreateImportsResolverCookie(
 	)
 
 	return newCookie
+}
+
+// Clears the associated C-side cache, if there is any
+// meant to be called between compilations
+func (resolverCookie *ResolverCookie) ClearCache() {
+	C.golibsass_resolvercookie_clearcache(
+		resolverCookie.cCookiePtr,
+	)
 }

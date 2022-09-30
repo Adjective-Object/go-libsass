@@ -32,6 +32,15 @@ uintptr_t golibsass_resolvercookie_idx(
     return cookie->idx;
 }
 
+void golibsass_resolvercookie_clearcache(
+    GoLibsass_ResolverCookie* cookie
+) {
+    if (golibsass_resolvercookie_hascache(cookie)) {
+        golibsass_resolution_cache_clear(cookie->cache);
+    }
+}
+
+
 bool golibsass_resolvercookie_hascache(
     GoLibsass_ResolverCookie *cookie
 ) {
