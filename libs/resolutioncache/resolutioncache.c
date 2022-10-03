@@ -23,7 +23,7 @@
 
 void golibsass_resolutioncache_panic_on_err(char* reason, int err_number) {
     if (err_number != 0) {
-        fprintf(    
+        fprintf(
             stderr,
             "go-libsass resolutioncache hit unrecoverable error while %s: %s (%d)",
             reason,
@@ -39,7 +39,7 @@ void golibsass_resolutioncache_panic_on_err(char* reason, int err_number) {
 // Does not clone the abs_path if any, since this is meant to be
 // used on imports that have not yet returned to sass and had their
 // abspaths cached.
-Sass_Import_Entry clone_entry(Sass_Import_Entry original){
+Sass_Import_Entry clone_entry(Sass_Import_Entry original) {
     const char *orig_imp_path = sass_import_get_imp_path(original);
     const char *orig_abs_path = sass_import_get_abs_path(original);
     const char *orig_source = sass_import_get_source(original);
@@ -50,33 +50,25 @@ Sass_Import_Entry clone_entry(Sass_Import_Entry original){
     char *new_source = NULL;
     char *new_srcmap = NULL;
 
-    printf("cloned entry{\n");
-
     if (orig_imp_path != NULL) {
         new_imp_path = malloc(sizeof(char) * (strnlen(orig_imp_path, CACHE_MAX_SPECIFIER_LEN) + 1));
         strcpy(new_imp_path, orig_imp_path);
-        printf("  new_imp_path:%s,\n", new_imp_path);
     }
 
     if (orig_abs_path != NULL) {
         new_abs_path = malloc(sizeof(char) * (strnlen(orig_abs_path, CACHE_MAX_FILEPATH_LEN) + 1));
         strcpy(new_abs_path, orig_abs_path);
-        printf("  new_abs_path:%s,\n", new_abs_path);
     }
 
     if (orig_source != NULL) {
         new_source = malloc(sizeof(char) * (strnlen(orig_source, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
         strcpy(new_source, orig_source);
-        printf("    new_source:%s,\n", new_source);
     }
 
     if (orig_srcmap != NULL) {
         new_srcmap = malloc(sizeof(char) * (strnlen(orig_srcmap, CACHE_MAX_BODY_OR_SRCMAP_LEN) + 1));
         strcpy(new_srcmap, orig_srcmap);
-        printf("    new_srcmap:%s,\n", new_srcmap);
     }
-
-    printf("}");
 
     return sass_make_import(
         new_imp_path,
@@ -113,9 +105,9 @@ GoLibsass_ResolverCache golibsass_resolution_cache_create(size_t cache_size) {
     golibsass_resolutioncache_panic_on_err("creating mutex", golibsass_rwmutex_init(mutex));
 
     GoLibsass_ResolverCache cache = {
-        cache_size: cache_size,
-        mutex: mutex,
-        entries:  calloc(sizeof(GoLibsass_ResolverCacheEntryInternal), cache_size),
+        .cache_size = cache_size,
+        .mutex      = mutex,
+        .entries    = calloc(sizeof(GoLibsass_ResolverCacheEntryInternal), cache_size),
     };
 
     return cache;
@@ -138,18 +130,13 @@ void golibsass_resolution_cache_insert(
     // golibsass_resolution_cache_clear or golibsass_resolution_cache_destroy
     Sass_Import_Entry entry
 ) {
-    printf("golibsass_resolution_cache_insert(%p)\n", cache.entries);
     if (entry == NULL) {
         return;
     }
 
-    printf("  checking cache.entries\n");
     if (cache.entries == NULL) {
-        printf("    uninitialied cache!?\n");
         return;
     }
-
-    printf("  getting import path from %p (ptr)\n", entry);
 
     const char* entryImportPath = sass_import_get_imp_path(entry);
     if (entryImportPath == NULL) {
@@ -161,9 +148,6 @@ void golibsass_resolution_cache_insert(
         return;
     }
 
-    printf("  entryImportPath=%p (ptr)\n", entryImportPath);
-    printf("  entryImportPath=%s (str)\n", entryImportPath);
-
     golibsass_resolutioncache_panic_on_err("locking mutex before insert", golibsass_rwmutex_wrlock(cache.mutex));
 
     int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImportPath);
@@ -174,8 +158,6 @@ void golibsass_resolution_cache_insert(
         GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
 
         if (cur->entryData == NULL) {
-            printf("    overwriting entry at offset %d (%p) startingIndex=%d, i=%d\n",
-                realIndex, cur, startingIndex, i);
             // found an empty entry, overwrite it
             cur->entryData = clone_entry(entry);
             cur->usage = 0;
@@ -185,11 +167,8 @@ void golibsass_resolution_cache_insert(
 
         // check if the current entry is a duplicate of the current entry
         const char* curImporterPath = sass_import_get_imp_path(cur->entryData);
-        printf("curImporterPath=%s\n", curImporterPath);
 
         if (strncmp(entryImportPath, curImporterPath, CACHE_MAX_SPECIFIER_LEN) == 0) {
-            printf("    overwriting duplicate entry at offset %d (%p) startingIndex=%d, i=%d\n",
-                realIndex, cur, startingIndex, i);
             // Found the entry, return it
             cur->usage += CACHE_USAGE_READ_CREDIT;
             cur->entryData = clone_entry(entry);
@@ -214,46 +193,26 @@ Sass_Import_Entry golibsass_resolution_cache_get(
     GoLibsass_ResolverCache cache,
     const char* import_specifier
 ) {
-    printf("golibsass_resolution_cache_get(%p, %s)\n", cache.entries, import_specifier);
-
     int startingIndex = golibsass_resolution_cache_raw_index(cache, import_specifier);
 
-    printf(
-        "::: startingIndex=%d cache.cache_size=%d\n",
-        startingIndex,
-        cache.cache_size
-    );
-
     if (cache.entries == NULL) {
-        printf("uninitialied cache!?\n");
         return NULL;
     }
 
     golibsass_resolutioncache_panic_on_err("locking mutex before read", golibsass_rwmutex_rdlock(cache.mutex));
 
     for (int i=0; i<cache.cache_size; i++) {
-        printf(
-            "startingIndex=%d i=%d cache.cache_size=%d\n",
-            startingIndex,
-            i,
-            cache.cache_size
-        );
         int realIndex = (startingIndex + i) % cache.cache_size;
         GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
 
         Sass_Import_Entry entryData = cur->entryData;
         if (entryData == NULL) {
-            printf("empty entry\n");
             // Found an empty entry - that means there is no entry available
             golibsass_resolutioncache_panic_on_err("releasing mutex after read", golibsass_rwmutex_rdunlock(cache.mutex));
             return NULL;
         }
         
-        printf("entryData=%p\n", entryData);
-
         const char* curImporterPath = sass_import_get_imp_path(entryData);
-        printf("curImporterPath=%s\n", curImporterPath);
-
         if (strncmp(import_specifier, curImporterPath, CACHE_MAX_SPECIFIER_LEN) == 0) {
             // Found the entry, return it
             cur->usage += CACHE_USAGE_READ_CREDIT;

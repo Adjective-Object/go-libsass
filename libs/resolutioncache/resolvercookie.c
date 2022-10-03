@@ -9,7 +9,6 @@ GoLibsass_ResolverCookie* golibsass_resolvercookie_create(
     GoLibsass_ResolverCookie* cookie = calloc(sizeof(GoLibsass_ResolverCookie), 1);
     cookie->idx = callback_idx;
 
-    printf("making a cookie with callback_idx=%lu, cache_size=%lu\n", callback_idx, cache_size);
     if (cache_size > 0) {
         GoLibsass_ResolverCache cache = golibsass_resolution_cache_create(cache_size);
         cookie->cache = cache;
