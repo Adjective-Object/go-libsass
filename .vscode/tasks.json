@@ -8,7 +8,7 @@
             "type": "process",
             "command": "/usr/local/go/bin/go",
             "args": [
-                "test", "-c"
+                "test", "-c", "-tags", "dev"
             ],
             "options": {
                 "cwd": "${workspaceRoot}",

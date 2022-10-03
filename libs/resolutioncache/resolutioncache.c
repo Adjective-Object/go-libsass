@@ -81,10 +81,10 @@ Sass_Import_Entry clone_entry(Sass_Import_Entry original) {
 // not-cryptographically secure hash into the resolution hashmap
 int hash_string(const char* hashString) {
     int hash = 0;
-    for (int i=0; i<hashString[i] != '\0'; i++) {
+    for (int i=0; hashString[i] != '\0'; i++) {
         hash = (hash << 1) ^ hashString[i];
     }
-    return hash;
+    return abs(hash);
 }
 
 // Gets the initial index into the cache that should be checked for the
@@ -101,13 +101,15 @@ int golibsass_resolution_cache_raw_index(
 
 // Creates a new instance of the resolution cache
 GoLibsass_ResolverCache golibsass_resolution_cache_create(size_t cache_size) {
+    // printf("golibsass_resolution_cache_create()\n");
+
     golibsass_rwmutex* mutex = malloc(sizeof(golibsass_rwmutex));
     golibsass_resolutioncache_panic_on_err("creating mutex", golibsass_rwmutex_init(mutex));
 
     GoLibsass_ResolverCache cache = {
         .cache_size = cache_size,
         .mutex      = mutex,
-        .entries    = calloc(sizeof(GoLibsass_ResolverCacheEntryInternal), cache_size),
+        .entries    = calloc(cache_size, sizeof(GoLibsass_ResolverCacheEntryInternal)),
     };
 
     return cache;
@@ -148,14 +150,16 @@ void golibsass_resolution_cache_insert(
         return;
     }
 
+    // printf("golibsass_resolution_cache_insert(%s)\n", entryImportPath);
+
     golibsass_resolutioncache_panic_on_err("locking mutex before insert", golibsass_rwmutex_wrlock(cache.mutex));
 
     int startingIndex = golibsass_resolution_cache_raw_index(cache, entryImportPath);
-    GoLibsass_ResolverCacheEntryInternal* leastUsed = (cache.entries) + startingIndex;
+    GoLibsass_ResolverCacheEntryInternal* leastUsed = &(cache.entries[startingIndex]);
 
     for (int i=0; i<cache.cache_size; i++) {
         int realIndex = (startingIndex + i) % cache.cache_size;
-        GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
+        GoLibsass_ResolverCacheEntryInternal* cur = &(cache.entries[realIndex]);
 
         if (cur->entryData == NULL) {
             // found an empty entry, overwrite it
@@ -193,6 +197,7 @@ Sass_Import_Entry golibsass_resolution_cache_get(
     GoLibsass_ResolverCache cache,
     const char* import_specifier
 ) {
+    // printf("golibsass_resolution_cache_get(%s)\n", import_specifier);
     int startingIndex = golibsass_resolution_cache_raw_index(cache, import_specifier);
 
     if (cache.entries == NULL) {
@@ -203,7 +208,8 @@ Sass_Import_Entry golibsass_resolution_cache_get(
 
     for (int i=0; i<cache.cache_size; i++) {
         int realIndex = (startingIndex + i) % cache.cache_size;
-        GoLibsass_ResolverCacheEntryInternal* cur = cache.entries + realIndex;
+
+        GoLibsass_ResolverCacheEntryInternal* cur = &(cache.entries[realIndex]);
 
         Sass_Import_Entry entryData = cur->entryData;
         if (entryData == NULL) {
@@ -242,6 +248,7 @@ void golibsass_resolution_cache_destroy(
     // a layer of indirection
     GoLibsass_ResolverCache cache
 ) {
+    // printf("golibsass_resolution_cache_destroy()\n");
     // free up all entries from the cache
     golibsass_resolution_cache_clear(cache);
     // clean up the rw lock
@@ -259,20 +266,21 @@ void golibsass_resolution_cache_clear(
     // a layer of indirection
     GoLibsass_ResolverCache cache
 ) {
+    // printf("golibsass_resolution_cache_clear()\n");
+
     golibsass_resolutioncache_panic_on_err("locking mutex on cache clear", golibsass_rwmutex_wrlock(cache.mutex));
     for (int i=0;i<cache.cache_size;i++) {
-        GoLibsass_ResolverCacheEntryInternal *entry = cache.entries+i;
+        GoLibsass_ResolverCacheEntryInternal *entry = &(cache.entries[i]);
         Sass_Import_Entry entryDataPtr = entry->entryData;
         if (entryDataPtr != NULL) {
             sass_delete_import(entryDataPtr);
-            // TODO this shouldn't be needed because of the memset below,
-            // why is it happening?
+            // TODO this may be unnecessary because of the memset below
             entry->entryData = NULL;
             entry->usage = 0;
         }
     }
 
     // zero the cache entries 
-    memset(cache.entries, sizeof(GoLibsass_ResolverCacheEntryInternal) * cache.cache_size, 0);
+    memset(cache.entries, 0, sizeof(GoLibsass_ResolverCacheEntryInternal) * cache.cache_size);
     golibsass_resolutioncache_panic_on_err("releasing mutex on cache clear", golibsass_rwmutex_wrunlock(cache.mutex));
 }

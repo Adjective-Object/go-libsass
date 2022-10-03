@@ -1,12 +1,8 @@
 package libs
 
-// // Opt into windows > XP so we have access to the
-// // SRWLOCK type from the windows.h stdlib
-// #cgo windows CFLAGS: -D_WIN32_WINNT=0x0600
-//
-// #include "./resolutioncache/rwmutex.c"
-// #include "./resolutioncache/resolutioncache.c"
-// #include "./resolutioncache/resolvercookie.c"
+// #include "./resolutioncache/rwmutex.h"
+// #include "./resolutioncache/resolutioncache.h"
+// #include "./resolutioncache/resolvercookie.h"
 import "C"
 import "runtime"
 

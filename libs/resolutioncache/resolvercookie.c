@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "resolvercookie.h"
 #include "resolutioncache.h"
 

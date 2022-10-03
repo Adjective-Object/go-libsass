@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "sass/context.h"
 #include "resolvercookie.h"
 #include "resolutioncache.h"

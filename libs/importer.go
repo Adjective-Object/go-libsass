@@ -1,10 +1,7 @@
 package libs
 
-// // Opt into windows > XP so we have access to the
-// // SRWLOCK type from the windows.h stdlib
-// #cgo windows CFLAGS: -D_WIN32_WINNT=0x0600
-//
-// #include "./resolutioncache/importerhandler.c"
+// #include "sass/context.h"
+// #include "./resolutioncache/importerhandler.h"
 import "C"
 
 // C changes will not be picked up unless you change the above cgo snipp
