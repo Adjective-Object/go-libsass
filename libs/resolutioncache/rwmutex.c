@@ -6,94 +6,96 @@
 #include <stdio.h>
 
 // Transparent wrappper for InitializeSRWLock
-int golibsass_rwmutex_init(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_init(golibsass_rwmutex *rwlock)
+{
     InitializeSRWLock(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
     return 0;
 }
 
 // noop in windows
-int golibsass_rwmutex_destroy(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_destroy(golibsass_rwmutex *rwlock)
+{
     // destory is a noop so long as the lock is not currently
     // acquoired
     return 0;
 }
 
 // Transparent wrappper for AcquireSRWLockShared
-int golibsass_rwmutex_rdlock(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_rdlock(golibsass_rwmutex *rwlock)
+{
     AcquireSRWLockShared(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
     return 0;
 }
 
 // Transparent wrappper for AcquireSRWLockExclusive
-int golibsass_rwmutex_wrlock(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_wrlock(golibsass_rwmutex *rwlock)
+{
     AcquireSRWLockExclusive(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
     return 0;
 }
 
 // Transparent wrappper for ReleaseSRWLockShared
-int golibsass_rwmutex_rdunlock(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_rdunlock(golibsass_rwmutex *rwlock)
+{
     ReleaseSRWLockShared(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
     return 0;
 }
 
 // Transparent wrappper for ReleaseSRWLockExclusive
-int golibsass_rwmutex_wrunlock(golibsass_rwmutex *rwlock) {
+int golibsass_rwmutex_wrunlock(golibsass_rwmutex *rwlock)
+{
     ReleaseSRWLockExclusive(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
     return 0;
 }
 
 #else
 // Transparent wrappper for pthread_rwlock_init(lock, NULL)
-int golibsass_rwmutex_init(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_init(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_init(
-        rwlock,
+        rwlock->lock,
         NULL
     );
 }
 
 // Transparent wrappper for pthread_rwlock_destroy
-int golibsass_rwmutex_destroy(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_destroy(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_destroy(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
 }
 
 // Transparent wrappper for pthread_rwlock_rdlock
-int golibsass_rwmutex_rdlock(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_rdlock(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_rdlock(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
 }
 
 // Transparent wrappper for pthread_rwlock_wrlock
-int golibsass_rwmutex_wrlock(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_wrlock(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_wrlock(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
 }
 
 // Transparent wrappper for pthread_rwlock_unlock
-int golibsass_rwmutex_rdunlock(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_rdunlock(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_unlock(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
 }
 
 // Transparent wrappper for pthread_rwlock_unlock
-int golibsass_rwmutex_wrunlock(golibsass_rwmutex *rwlock){
+int golibsass_rwmutex_wrunlock(golibsass_rwmutex *rwlock)
+{
     return pthread_rwlock_unlock(
-        &(rwlock->lock)
-    );
+        &(rwlock->lock));
 }
 
 #endif
