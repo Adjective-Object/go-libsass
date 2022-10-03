@@ -1,49 +1,61 @@
 #include "rwmutex.h"
 
 #ifdef _WIN32
+#include <windows.h>
 #include <synchapi.h>
+#include <stdio.h>
 
 // Transparent wrappper for InitializeSRWLock
 int golibsass_rwmutex_init(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_init(%p)\n", rwlock->lock);
     InitializeSRWLock(
         &(rwlock->lock)
     );
-    return 0
+    return 0;
 }
 
 // noop in windows
 int golibsass_rwmutex_destroy(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_destroy(%p)\n", rwlock->lock);
     // destory is a noop so long as the lock is not currently
     // acquoired
+    return 0;
 }
 
 // Transparent wrappper for AcquireSRWLockShared
 int golibsass_rwmutex_rdlock(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_rdlock(%p)\n", rwlock->lock);
     AcquireSRWLockShared(
         &(rwlock->lock)
     );
+    return 0;
 }
 
 // Transparent wrappper for AcquireSRWLockExclusive
 int golibsass_rwmutex_wrlock(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_wrlock(%p)\n", rwlock->lock);
     AcquireSRWLockExclusive(
         &(rwlock->lock)
     );
-    return 0
+    return 0;
 }
 
 // Transparent wrappper for ReleaseSRWLockShared
 int golibsass_rwmutex_rdunlock(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_rdunlock(%p)\n", rwlock->lock);
     ReleaseSRWLockShared(
         &(rwlock->lock)
     );
+    return 0;
 }
 
 // Transparent wrappper for ReleaseSRWLockExclusive
 int golibsass_rwmutex_wrunlock(golibsass_rwmutex *rwlock) {
+    printf("golibsass_rwmutex_wrunlock(%p)\n", rwlock->lock);
     ReleaseSRWLockExclusive(
         &(rwlock->lock)
     );
+    return 0;
 }
 
 #else

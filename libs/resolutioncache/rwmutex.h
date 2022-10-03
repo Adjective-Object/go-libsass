@@ -8,9 +8,10 @@
  */
 
 #ifdef _WIN32
+#include <windows.h>
 #include <synchapi.h>
 typedef struct {
-    SRWLock lock;
+    SRWLOCK lock;
 } golibsass_rwmutex;
 #else
 # include <pthread.h>
