@@ -81,13 +81,11 @@ func GetEntry(es []ImportEntry, parent string, path string) (string, error) {
 // Sass_Import is returned for libsass to resolve.
 //
 //export ImporterBridge
-func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) C.Sass_Import_List {
-	var importResolver ImportResolver
-
+func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) (C.Sass_Import_List, bool) {
 	// Retrieve the index
 	idx := int(cidx)
-	importResolver, ok := globalImports.Get(idx).(ImportResolver)
-
+	entry := globalImports.Get(idx)
+	resolver, ok := entry.(AdvancedImportResolver)
 	if !ok {
 		fmt.Printf("failed to resolve import handler: %d\n", idx)
 	}
@@ -102,33 +100,37 @@ func ImporterBridge(url *C.char, prev *C.char, cidx C.uintptr_t) C.Sass_Import_L
 
 	golist := *(*[]C.Sass_Import_Entry)(unsafe.Pointer(&hdr))
 
-	if importResolver != nil {
-		newURL, body, resolved := importResolver(rel, parent)
-		if resolved {
+	if resolver != nil || true {
+		// resolve with custom
+		result := resolver(
+			rel,
+			parent,
+		)
+		if result.Resolved {
 			// Passing a nil as body is a signal to load the import from the URL.
 			var bodyv *C.char
-			if body != "" {
-				bodyv = C.CString(body)
+			if result.Source != "" {
+				bodyv = C.CString(result.Source)
 			}
-			ent := C.sass_make_import_entry(C.CString(newURL), bodyv, nil)
+			ent := C.sass_make_import(url, C.CString(result.NewUrl), bodyv, nil)
 			cent := (C.Sass_Import_Entry)(ent)
 			golist[0] = cent
 
-			return list
+			return list, result.ShouldCache
 		}
 	}
 
 	if strings.HasPrefix(rel, "compass") {
-		ent := C.sass_make_import_entry(url, C.CString(""), nil)
+		ent := C.sass_make_import(url, url, C.CString(""), nil)
 		cent := (C.Sass_Import_Entry)(ent)
 		golist[0] = cent
 	} else {
-		ent := C.sass_make_import_entry(url, nil, nil)
+		ent := C.sass_make_import(url, url, nil, nil)
 		cent := (C.Sass_Import_Entry)(ent)
 		golist[0] = cent
 	}
 
-	return list
+	return list, false
 }
 
 type SassImportList C.Sass_Import_List
